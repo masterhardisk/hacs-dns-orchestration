@@ -15,7 +15,7 @@ class DNSOrchestrationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             base_url = user_input["base_url"].rstrip("/")
 
-            test_url = f"{base_url}/system/ip"
+            test_url = f"{base_url}/api/system/ip"
 
             try:
                 timeout = aiohttp.ClientTimeout(total=10)
