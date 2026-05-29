@@ -1,12 +1,19 @@
 import aiohttp
+from aiohttp import ClientTimeout
 from datetime import timedelta
 
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 
 class DNSCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, base_url: str, scan_interval: int):
         self.base_url = base_url
+        self.session = aiohttp.ClientSession(
+            timeout=ClientTimeout(total=10)
+        )
 
         super().__init__(
             hass,
@@ -19,18 +26,25 @@ class DNSCoordinator(DataUpdateCoordinator):
         url = f"{self.base_url}/system/ip"
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as resp:
-                    if resp.status != 200:
-                        raise UpdateFailed(f"Bad response: {resp.status}")
+            async with self.session.get(url) as resp:
+                if resp.status != 200:
+                    text = await resp.text()
+                    raise UpdateFailed(
+                        f"Bad response {resp.status}: {text}"
+                    )
 
-                    data = await resp.json()
+                data = await resp.json()
 
-                    # validación mínima
-                    if "current_ip" not in data:
-                        raise UpdateFailed("Invalid response: missing current_ip")
+                if not isinstance(data, dict):
+                    raise UpdateFailed("Invalid response format")
 
-                    return data
+                if "current_ip" not in data:
+                    raise UpdateFailed("Missing current_ip in response")
+
+                return data
+
+        except aiohttp.ClientError as err:
+            raise UpdateFailed(f"Client error: {err}")
 
         except Exception as err:
-            raise UpdateFailed(f"Connection error: {err}")
+            raise UpdateFailed(f"Unexpected error: {err}")
