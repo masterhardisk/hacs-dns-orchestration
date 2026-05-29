@@ -26,7 +26,7 @@ class DNSCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self):
-        url = f"{self.base_url}/system/ip"
+        url = f"{self.base_url}/api/system/ip"
 
         try:
             async with self.session.get(url) as resp:
