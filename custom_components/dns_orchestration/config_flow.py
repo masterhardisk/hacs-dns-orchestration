@@ -2,7 +2,6 @@ import voluptuous as vol
 import aiohttp
 
 from homeassistant import config_entries
-from homeassistant.core import callback
 
 DOMAIN = "dns_orchestration"
 
@@ -16,18 +15,24 @@ class DNSOrchestrationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             base_url = user_input["base_url"].rstrip("/")
 
+            test_url = f"{base_url}/system/ip"
+
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                        f"{base_url}/api/ha/state",
-                        timeout=10,
-                    ) as resp:
+                timeout = aiohttp.ClientTimeout(total=10)
+
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.get(test_url) as resp:
                         if resp.status != 200:
                             errors["base_url"] = "cannot_connect"
                         else:
                             data = await resp.json()
+
                             if not isinstance(data, dict):
                                 errors["base_url"] = "invalid_response"
+
+                            if "current_ip" not in data:
+                                errors["base_url"] = "invalid_response"
+
             except Exception:
                 errors["base_url"] = "cannot_connect"
 
@@ -44,7 +49,10 @@ class DNSOrchestrationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required("base_url", default="http://localhost:8010"): str,
+                    vol.Required(
+                        "base_url",
+                        default="http://localhost:8010"
+                    ): str,
                     vol.Optional("scan_interval", default=30): int,
                 }
             ),
