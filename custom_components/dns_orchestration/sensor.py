@@ -1,42 +1,55 @@
+from __future__ import annotations
+
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN
-from .coordinator import DNSCoordinator
 
+async def async_setup_entry(hass, entry, async_add_entities):
+    coordinator = hass.data[entry.domain][entry.entry_id]
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    coordinator: DNSCoordinator = hass.data[DOMAIN][entry.entry_id]
-
-    async_add_entities([
+    entities = [
         DNSPublicIPSensor(coordinator),
-    ])
+        DNSLastChangeSensor(coordinator),
+        DNSLastChangeAgeSensor(coordinator),
+        DNSIPChangedRecentlyBinarySensor(coordinator),
+    ]
+
+    async_add_entities(entities)
 
 
 class DNSPublicIPSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator: DNSCoordinator):
-        super().__init__(coordinator)
-        self.coordinator = coordinator
-
-    @property
-    def name(self):
-        return "DNS Public IP"
-
-    @property
-    def unique_id(self):
-        return "dns_public_ip"
+    _attr_name = "DNS Public IP"
+    _attr_unique_id = "dns_public_ip"
 
     @property
     def state(self):
-        data = self.coordinator.data or {}
-        return data.get("current_ip")
+        return self.coordinator.data.get("current_ip")
+
+
+class DNSLastChangeSensor(CoordinatorEntity, SensorEntity):
+    _attr_name = "DNS Last Change"
+    _attr_unique_id = "dns_last_change"
 
     @property
-    def extra_state_attributes(self):
-        data = self.coordinator.data or {}
-        return {
-            "last_change": data.get("last_change"),
-            "last_change_relative": data.get("last_change_relative"),
-        }
+    def state(self):
+        return self.coordinator.data.get("last_change")
+
+
+class DNSLastChangeAgeSensor(CoordinatorEntity, SensorEntity):
+    _attr_name = "DNS Last Change Age"
+    _attr_unique_id = "dns_last_change_age"
+
+    @property
+    def state(self):
+        return self.coordinator.data.get("last_change_relative")
+
+
+class DNSIPChangedRecentlyBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    _attr_name = "DNS IP Changed Recently"
+    _attr_unique_id = "dns_ip_changed_recently"
+
+    @property
+    def is_on(self):
+        value = self.coordinator.data.get("last_change_relative", 999999)
+        return value < 3600
