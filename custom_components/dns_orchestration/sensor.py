@@ -5,20 +5,35 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 
+DOMAIN = "dns_orchestration"
+DEVICE_ID = "main"
+
+
+class DNSBaseEntity(CoordinatorEntity):
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, DEVICE_ID)},
+            "name": "DNS Orchestration",
+            "manufacturer": "MasterHardisk",
+            "model": "DNS Orchestration",
+        }
+
+
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[entry.domain][entry.entry_id]
 
-    entities = [
-        DNSPublicIPSensor(coordinator),
-        DNSLastChangeSensor(coordinator),
-        DNSLastChangeAgeSensor(coordinator),
-        DNSIPChangedRecentlyBinarySensor(coordinator),
-    ]
+    async_add_entities(
+        [
+            DNSPublicIPSensor(coordinator),
+            DNSLastChangeSensor(coordinator),
+            DNSLastChangeAgeSensor(coordinator),
+            DNSIPChangedRecentlyBinarySensor(coordinator),
+        ]
+    )
 
-    async_add_entities(entities)
 
-
-class DNSPublicIPSensor(CoordinatorEntity, SensorEntity):
+class DNSPublicIPSensor(DNSBaseEntity, SensorEntity):
     _attr_name = "DNS Public IP"
     _attr_unique_id = "dns_public_ip"
 
@@ -27,7 +42,7 @@ class DNSPublicIPSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.data.get("current_ip")
 
 
-class DNSLastChangeSensor(CoordinatorEntity, SensorEntity):
+class DNSLastChangeSensor(DNSBaseEntity, SensorEntity):
     _attr_name = "DNS Last Change"
     _attr_unique_id = "dns_last_change"
 
@@ -36,7 +51,7 @@ class DNSLastChangeSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.data.get("last_change")
 
 
-class DNSLastChangeAgeSensor(CoordinatorEntity, SensorEntity):
+class DNSLastChangeAgeSensor(DNSBaseEntity, SensorEntity):
     _attr_name = "DNS Last Change Age"
     _attr_unique_id = "dns_last_change_age"
 
@@ -45,7 +60,7 @@ class DNSLastChangeAgeSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.data.get("last_change_relative")
 
 
-class DNSIPChangedRecentlyBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class DNSIPChangedRecentlyBinarySensor(DNSBaseEntity, BinarySensorEntity):
     _attr_name = "DNS IP Changed Recently"
     _attr_unique_id = "dns_ip_changed_recently"
 
