@@ -1,6 +1,5 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-
 from .coordinator import DNSCoordinator
 
 DOMAIN = "dns_orchestration"

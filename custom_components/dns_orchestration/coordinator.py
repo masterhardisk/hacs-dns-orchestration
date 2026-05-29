@@ -1,11 +1,14 @@
 import aiohttp
 from aiohttp import ClientTimeout
 from datetime import timedelta
+import logging
 
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DNSCoordinator(DataUpdateCoordinator):
@@ -17,7 +20,7 @@ class DNSCoordinator(DataUpdateCoordinator):
 
         super().__init__(
             hass,
-            logger=None,
+            logger=_LOGGER,
             name="dns_orchestration_coordinator",
             update_interval=timedelta(seconds=scan_interval),
         )
