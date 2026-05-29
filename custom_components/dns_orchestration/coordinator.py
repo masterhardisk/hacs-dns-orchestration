@@ -1,13 +1,12 @@
-import logging
-from datetime import timedelta
-
-import aiohttp
-
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+import logging
+from datetime import timedelta
+import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,49 +26,101 @@ class DNSCoordinator(DataUpdateCoordinator):
         )
 
     async def _async_update_data(self):
-        url = f"{self.base_url}/api/system/ip"
+        ip_url = f"{self.base_url}/api/system/ip"
+        records_url = f"{self.base_url}/api/records"
 
         timeout = aiohttp.ClientTimeout(total=10)
 
         try:
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(url) as resp:
 
+                # -------------------------
+                # IP
+                # -------------------------
+                async with session.get(ip_url) as resp:
                     if resp.status != 200:
                         text = await resp.text()
-                        raise UpdateFailed(f"Bad response {resp.status}: {text}")
+                        raise UpdateFailed(f"Bad IP response {resp.status}: {text}")
 
-                    data = await resp.json()
+                    ip_data = await resp.json()
 
-                    if not isinstance(data, dict):
-                        raise UpdateFailed("Invalid response format")
+                    if not isinstance(ip_data, dict):
+                        raise UpdateFailed("Invalid IP response format")
 
-                    ip = data.get("current_ip")
-
+                    ip = ip_data.get("current_ip")
                     if not ip:
                         raise UpdateFailed("Missing current_ip in response")
 
-                    # 🔥 DETECCIÓN DE CAMBIO DE IP
-                    if self._last_ip and self._last_ip != ip:
-                        _LOGGER.info(
-                            "DNS IP changed: %s -> %s",
-                            self._last_ip,
-                            ip,
-                        )
+                # -------------------------
+                # RECORDS
+                # -------------------------
+                async with session.get(records_url) as resp:
+                    if resp.status != 200:
+                        text = await resp.text()
+                        raise UpdateFailed(f"Bad records response {resp.status}: {text}")
 
-                        async_dispatcher_send(
-                            self.hass,
-                            SIGNAL_IP_CHANGED,
-                            {
-                                "old_ip": self._last_ip,
-                                "new_ip": ip,
-                                "raw": data,
-                            },
-                        )
+                    records = await resp.json()
 
-                    self._last_ip = ip
+                    if not isinstance(records, list):
+                        raise UpdateFailed("Invalid records response format")
 
-                    return data
+                # -------------------------
+                # IP CHANGE DETECTION
+                # -------------------------
+                if self._last_ip and self._last_ip != ip:
+                    _LOGGER.info(
+                        "DNS IP changed: %s -> %s",
+                        self._last_ip,
+                        ip,
+                    )
+
+                    async_dispatcher_send(
+                        self.hass,
+                        SIGNAL_IP_CHANGED,
+                        {
+                            "old_ip": self._last_ip,
+                            "new_ip": ip,
+                            "raw": ip_data,
+                        },
+                    )
+
+                self._last_ip = ip
+
+                # -------------------------
+                # RECORDS METRICS
+                # -------------------------
+                total = len(records)
+
+                ok = sum(
+                    1 for r in records
+                    if r.get("status") in ("ok", "up_to_date")
+                )
+
+                pending = sum(
+                    1 for r in records
+                    if r.get("status") == "pending"
+                )
+
+                error = sum(
+                    1 for r in records
+                    if r.get("status") == "error"
+                )
+
+                # -------------------------
+                # RETURN DATA (STATE)
+                # -------------------------
+                return {
+                    # IP
+                    "current_ip": ip,
+                    "last_change": ip_data.get("last_change"),
+                    "last_change_relative": ip_data.get("last_change_relative"),
+
+                    # RECORDS
+                    "records_total": total,
+                    "records_ok": ok,
+                    "records_pending": pending,
+                    "records_error": error,
+                }
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Client error: {err}")

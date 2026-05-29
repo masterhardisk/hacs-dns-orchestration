@@ -4,7 +4,6 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-
 DOMAIN = "dns_orchestration"
 DEVICE_ID = "main"
 
@@ -25,13 +24,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     async_add_entities(
         [
+            # IP sensors
             DNSPublicIPSensor(coordinator),
             DNSLastChangeSensor(coordinator),
             DNSLastChangeAgeSensor(coordinator),
             DNSIPChangedRecentlyBinarySensor(coordinator),
+
+            # Records health sensors
+            DNSRecordsTotalSensor(coordinator),
+            DNSRecordsOkSensor(coordinator),
+            DNSRecordsErrorSensor(coordinator),
+            DNSRecordsPendingSensor(coordinator),
         ]
     )
 
+
+# -------------------------
+# IP SENSORS
+# -------------------------
 
 class DNSPublicIPSensor(DNSBaseEntity, SensorEntity):
     _attr_name = "DNS Public IP"
@@ -68,3 +78,43 @@ class DNSIPChangedRecentlyBinarySensor(DNSBaseEntity, BinarySensorEntity):
     def is_on(self):
         value = self.coordinator.data.get("last_change_relative", 999999)
         return value < 3600
+
+
+# -------------------------
+# RECORDS SENSORS
+# -------------------------
+
+class DNSRecordsTotalSensor(DNSBaseEntity, SensorEntity):
+    _attr_name = "DNS Records Total"
+    _attr_unique_id = "dns_records_total"
+
+    @property
+    def state(self):
+        return self.coordinator.data.get("records_total", 0)
+
+
+class DNSRecordsOkSensor(DNSBaseEntity, SensorEntity):
+    _attr_name = "DNS Records OK"
+    _attr_unique_id = "dns_records_ok"
+
+    @property
+    def state(self):
+        return self.coordinator.data.get("records_ok", 0)
+
+
+class DNSRecordsErrorSensor(DNSBaseEntity, SensorEntity):
+    _attr_name = "DNS Records Error"
+    _attr_unique_id = "dns_records_error"
+
+    @property
+    def state(self):
+        return self.coordinator.data.get("records_error", 0)
+
+
+class DNSRecordsPendingSensor(DNSBaseEntity, SensorEntity):
+    _attr_name = "DNS Records Pending"
+    _attr_unique_id = "dns_records_pending"
+
+    @property
+    def state(self):
+        return self.coordinator.data.get("records_pending", 0)
