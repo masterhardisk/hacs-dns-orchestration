@@ -1,0 +1,11 @@
+{
+  "domain": "dns_orchestration",
+  "name": "DNS Orchestration",
+  "version": "1.0.0",
+  "documentation": "https://github.com/masterhardisk/dns-orchestration",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@masterhardisk"],
+  "config_flow": true,
+  "iot_class": "local_polling"
+}

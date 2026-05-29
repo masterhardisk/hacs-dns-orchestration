@@ -1,0 +1,6 @@
+{
+  "name": "DNS Orchestration",
+  "content_in_root": false,
+  "domains": ["dns_orchestration"],
+  "homeassistant": "2024.1.0"
+}
